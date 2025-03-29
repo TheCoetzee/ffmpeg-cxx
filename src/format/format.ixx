@@ -30,6 +30,11 @@ public:
     Packet(AVPacket *packet);
     ~Packet();
 
+    Packet(Packet&&) = default;
+    Packet& operator=(Packet&&) = default;
+    Packet(const Packet&) = delete;
+    Packet& operator=(const Packet&) = delete;
+
     const AVPacket *avPacket() const;
     int streamIndex() const;
 

@@ -17,7 +17,7 @@ public:
     ~Decoder();
 
     ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> decodeNextFrame();
-    ffmpeg::util::ffmpeg_result<void> sendPacket(ffmpeg::format::Packet packet);
+    ffmpeg::util::ffmpeg_result<void> sendPacket(ffmpeg::format::Packet& packet);
 
 private:
     bool eof_reached_;

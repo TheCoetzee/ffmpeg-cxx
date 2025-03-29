@@ -45,7 +45,7 @@ ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
         return std::unexpected(ffmpeg::util::FFmpegEOF{});
     }
 
-    auto *frame = av_frame_alloc();
+    AVFrame *frame = av_frame_alloc();
     if (!frame) {
         return std::unexpected(ffmpeg::util::FFmpegError(
             AVERROR(ENOMEM), "Failed to allocate frame."));
@@ -65,13 +65,12 @@ ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
 }
 
 ffmpeg::util::ffmpeg_result<void>
-Decoder::sendPacket(ffmpeg::format::Packet packet) {
+Decoder::sendPacket(ffmpeg::format::Packet& packet) {
     int ret = avcodec_send_packet(ctx_, packet.avPacket());
     if (ret < 0) {
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }
     return ffmpeg::util::ffmpeg_result<void>{};
-    ;
 }
 
 } // namespace ffmpeg::codec
