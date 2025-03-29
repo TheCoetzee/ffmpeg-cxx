@@ -1,0 +1,18 @@
+---
+BasedOnStyle: LLVM
+
+# Basic indentation configuration
+IndentWidth: 4
+UseTab: Never
+TabWidth: 4
+
+# Maintain LLVM-style alignment but with 4-space indents
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+
+# Keep other LLVM style defaults for:
+# - Braces
+# - Line length (80 columns)
+# - Spacing
+# - Wrapping
+...
