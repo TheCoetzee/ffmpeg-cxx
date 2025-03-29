@@ -1,3 +1,3 @@
 export module ffmpeg.util;
 
-export import ffmpeg.util.error;
+export import :error;

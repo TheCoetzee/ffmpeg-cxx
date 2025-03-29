@@ -12,6 +12,9 @@ target_include_directories(ffmpeg_frame PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include/ffmpeg-cpp>
 )
+target_include_directories(ffmpeg_frame PRIVATE ${FFMPEG_INCLUDE_DIRS})
+target_link_directories(ffmpeg_frame PRIVATE ${FFMPEG_LIBRARY_DIRS})
+target_link_libraries(ffmpeg_frame PRIVATE ${FFMPEG_LIBRARIES})
 
 add_subdirectory(util)
 add_subdirectory(format)
