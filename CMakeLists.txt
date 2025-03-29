@@ -10,7 +10,7 @@ find_package(FFMPEG REQUIRED COMPONENTS avformat avcodec avutil)
 
 add_subdirectory(src)
 
-install(TARGETS ffmpeg ffmpeg_format ffmpeg_codec ffmpeg_util ffmpeg_frame
+install(TARGETS ffmpeg ffmpeg_format ffmpeg_codec ffmpeg_util
   EXPORT ffmpeg-cpp-targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib

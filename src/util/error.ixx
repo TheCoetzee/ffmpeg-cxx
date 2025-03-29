@@ -7,7 +7,7 @@ extern "C" {
 #include <libavutil/avutil.h>
 }
 
-export module ffmpeg.util:error;
+export module ffmpeg.util.error;
 
 export namespace ffmpeg::util {
 class FFmpegError : public std::runtime_error {

@@ -9,7 +9,6 @@ extern "C" {
 export module ffmpeg.codec:decoder;
 
 import ffmpeg.util;
-import ffmpeg.frame;
 import ffmpeg.format;
 
 export namespace ffmpeg::codec {
@@ -28,9 +27,9 @@ class Decoder {
 public:
     explicit Decoder(AVCodecParameters *params);
 
-    ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> decodeNextFrame();
+    ffmpeg::util::ffmpeg_result<util::Frame> decodeNextFrame();
     ffmpeg::util::ffmpeg_result<void>
-    sendPacket(ffmpeg::format::Packet &packet);
+    sendPacket(util::Packet &packet);
 
 private:
     bool eof_reached_;

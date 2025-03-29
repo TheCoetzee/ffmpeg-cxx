@@ -1,8 +1,6 @@
 module;
 
 #include <expected>
-#include <format>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -27,12 +25,6 @@ AVRational Stream::timeBase() const { return stream_->time_base; }
 
 AVRational Stream::averageFrameRate() const { return stream_->avg_frame_rate; }
 
-Packet::Packet(AVPacket *packet) : packet_(packet) {}
-
-
-const AVPacket *Packet::avPacket() const { return packet_.get(); }
-
-int Packet::streamIndex() const { return packet_->stream_index; }
 
 Demuxer::Demuxer(const std::string &filename) {
     AVFormatContext * format_ctx = nullptr;
@@ -59,23 +51,18 @@ std::vector<Stream> Demuxer::streams() const {
     return streams;
 }
 
-ffmpeg::util::ffmpeg_result<Packet> Demuxer::readPacket() {
-    AVPacket *packet = av_packet_alloc();
-    if (!packet) {
-        return std::unexpected(ffmpeg::util::FFmpegError(
-            AVERROR(ENOMEM), "Failed to allocate packet."));
-    }
+ffmpeg::util::ffmpeg_result<util::Packet> Demuxer::readPacket() {
+    util::Packet packet;
 
-    int ret = av_read_frame(ctx_.get(), packet);
+    int ret = av_read_frame(ctx_.get(), packet.get());
 
     if (ret < 0) {
-        av_packet_free(&packet);
         if (ret == AVERROR_EOF) {
             return std::unexpected(ffmpeg::util::FFmpegEOF{});
         }
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }
-    return Packet(packet);
+    return packet;
 }
 int Demuxer::streamCount() const { return ctx_->nb_streams; }
 

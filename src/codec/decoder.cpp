@@ -10,7 +10,6 @@ extern "C" {
 
 module ffmpeg.codec;
 import ffmpeg.util;
-import ffmpeg.frame;
 import ffmpeg.format;
 
 namespace ffmpeg::codec {
@@ -38,18 +37,14 @@ Decoder::Decoder(AVCodecParameters *params) {
     }
 }
 
-ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
+ffmpeg::util::ffmpeg_result<util::Frame> Decoder::decodeNextFrame() {
     if (eof_reached_) {
         return std::unexpected(ffmpeg::util::FFmpegEOF{});
     }
 
-    AVFrame *frame = av_frame_alloc();
-    if (!frame) {
-        return std::unexpected(ffmpeg::util::FFmpegError(
-            AVERROR(ENOMEM), "Failed to allocate frame."));
-    }
+    util::Frame frame;
 
-    int ret = avcodec_receive_frame(ctx_.get(), frame);
+    int ret = avcodec_receive_frame(ctx_.get(), frame.get());
     if (ret == AVERROR(EAGAIN)) {
         return std::unexpected(ffmpeg::util::FFmpegAGAIN{});
     } else if (ret == AVERROR_EOF) {
@@ -59,12 +54,11 @@ ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }
 
-    return ffmpeg::frame::Frame(frame);
+    return frame;
 }
 
-ffmpeg::util::ffmpeg_result<void>
-Decoder::sendPacket(ffmpeg::format::Packet &packet) {
-    int ret = avcodec_send_packet(ctx_.get(), packet.avPacket());
+ffmpeg::util::ffmpeg_result<void> Decoder::sendPacket(util::Packet &packet) {
+    int ret = avcodec_send_packet(ctx_.get(), packet.get());
     if (ret < 0) {
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }
