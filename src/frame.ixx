@@ -1,5 +1,7 @@
 module;
 
+#include <memory>
+
 extern "C" {
 #include <libavutil/frame.h>
 }
@@ -7,13 +9,24 @@ extern "C" {
 export module ffmpeg.frame;
 
 export namespace ffmpeg::frame {
+struct AVFrameDeleter {
+    void operator()(AVFrame *frame) const {
+        if (frame) {
+            // av_frame_free expects AVFrame** and frees the frame struct
+            // and any data buffers it references (if ref-counted).
+            av_frame_free(&frame);
+            // frame is likely NULL after this call.
+        }
+    }
+};
+
 class Frame {
 public:
     Frame(AVFrame *frame);
-	~Frame();
 
-	AVFrame* avFrame();
+    AVFrame *avFrame();
+
 private:
-	AVFrame* frame_;
+    std::unique_ptr<AVFrame, AVFrameDeleter> frame_;
 };
 }; // namespace ffmpeg::frame

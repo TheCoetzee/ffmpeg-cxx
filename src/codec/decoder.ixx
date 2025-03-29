@@ -1,4 +1,7 @@
 module;
+
+#include <memory>
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 }
@@ -11,16 +14,26 @@ import ffmpeg.format;
 
 export namespace ffmpeg::codec {
 
+struct AVCodecContextDeleter {
+    void operator()(AVCodecContext *ctx) const {
+        if (ctx) {
+            // avcodec_free_context expects AVCodecContext**
+            avcodec_free_context(&ctx);
+            // ctx is likely NULL after this call.
+        }
+    }
+};
+
 class Decoder {
 public:
     explicit Decoder(AVCodecParameters *params);
-    ~Decoder();
 
     ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> decodeNextFrame();
-    ffmpeg::util::ffmpeg_result<void> sendPacket(ffmpeg::format::Packet& packet);
+    ffmpeg::util::ffmpeg_result<void>
+    sendPacket(ffmpeg::format::Packet &packet);
 
 private:
     bool eof_reached_;
-    AVCodecContext *ctx_;
+    std::unique_ptr<AVCodecContext, AVCodecContextDeleter> ctx_;
 };
 } // namespace ffmpeg::codec

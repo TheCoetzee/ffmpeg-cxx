@@ -21,24 +21,22 @@ Decoder::Decoder(AVCodecParameters *params) {
         throw ffmpeg::util::FFmpegError(AVERROR(ENOMEM), "Unsupported codec");
     }
 
-    ctx_ = avcodec_alloc_context3(codec);
-    if (!ctx_) {
+    AVCodecContext *context_raw = avcodec_alloc_context3(codec);
+    if (!context_raw) {
         throw ffmpeg::util::FFmpegError(AVERROR_INVALIDDATA,
                                         "Failed to allocate codec context");
     }
-
-    int ret = avcodec_parameters_to_context(ctx_, params);
+    ctx_.reset(context_raw);
+    int ret = avcodec_parameters_to_context(ctx_.get(), params);
     if (ret < 0) {
         throw std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }
 
-    ret = avcodec_open2(ctx_, codec, nullptr);
+    ret = avcodec_open2(ctx_.get(), codec, nullptr);
     if (ret < 0) {
         throw std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }
 }
-
-Decoder::~Decoder() { avcodec_free_context(&ctx_); }
 
 ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
     if (eof_reached_) {
@@ -51,7 +49,7 @@ ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
             AVERROR(ENOMEM), "Failed to allocate frame."));
     }
 
-    int ret = avcodec_receive_frame(ctx_, frame);
+    int ret = avcodec_receive_frame(ctx_.get(), frame);
     if (ret == AVERROR(EAGAIN)) {
         return std::unexpected(ffmpeg::util::FFmpegAGAIN{});
     } else if (ret == AVERROR_EOF) {
@@ -65,8 +63,8 @@ ffmpeg::util::ffmpeg_result<ffmpeg::frame::Frame> Decoder::decodeNextFrame() {
 }
 
 ffmpeg::util::ffmpeg_result<void>
-Decoder::sendPacket(ffmpeg::format::Packet& packet) {
-    int ret = avcodec_send_packet(ctx_, packet.avPacket());
+Decoder::sendPacket(ffmpeg::format::Packet &packet) {
+    int ret = avcodec_send_packet(ctx_.get(), packet.avPacket());
     if (ret < 0) {
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }

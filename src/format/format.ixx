@@ -1,5 +1,6 @@
 module;
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -25,26 +26,45 @@ private:
     const AVStream *stream_;
 };
 
+struct AVPacketDeleter {
+    void operator()(AVPacket *pkt) const {
+        if (pkt) {
+            // av_packet_free expects AVPacket** and frees the packet's data
+            // and the packet struct itself if it was allocated via
+            // av_packet_alloc.
+            av_packet_free(&pkt);
+            // pkt is likely NULL after this call, but it doesn't matter
+            // as the unique_ptr is managing the memory address.
+        }
+    }
+};
+
 class Packet {
 public:
     Packet(AVPacket *packet);
-    ~Packet();
-
-    Packet(Packet&&) = default;
-    Packet& operator=(Packet&&) = default;
-    Packet(const Packet&) = delete;
-    Packet& operator=(const Packet&) = delete;
 
     const AVPacket *avPacket() const;
     int streamIndex() const;
 
 private:
-    AVPacket *packet_;
+    std::unique_ptr<AVPacket, AVPacketDeleter> packet_;
+};
+
+struct AVFormatContextDeleter {
+    void operator()(AVFormatContext *ctx) const {
+        if (ctx) {
+            // avformat_close_input expects AVFormatContext**
+            // It potentially NULLs the pointer passed to it.
+            AVFormatContext *ptr_to_close = ctx;
+            avformat_close_input(&ptr_to_close);
+            // We don't need to do anything with ptr_to_close afterwards,
+            // the unique_ptr itself will become null when reset or destroyed.
+        }
+    }
 };
 
 struct Demuxer {
     Demuxer(const std::string &filename);
-    ~Demuxer();
 
     std::vector<Stream> streams() const;
     ffmpeg::util::ffmpeg_result<Packet> readPacket();
@@ -52,7 +72,7 @@ struct Demuxer {
     int bestVideoStreamIndex() const;
 
 private:
-    AVFormatContext *ctx_;
+    std::unique_ptr<AVFormatContext, AVFormatContextDeleter> ctx_;
 };
 
 } // namespace ffmpeg::format

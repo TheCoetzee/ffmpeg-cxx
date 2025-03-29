@@ -29,28 +29,27 @@ AVRational Stream::averageFrameRate() const { return stream_->avg_frame_rate; }
 
 Packet::Packet(AVPacket *packet) : packet_(packet) {}
 
-Packet::~Packet() { av_packet_free(&packet_); }
 
-const AVPacket *Packet::avPacket() const { return packet_; }
+const AVPacket *Packet::avPacket() const { return packet_.get(); }
 
 int Packet::streamIndex() const { return packet_->stream_index; }
 
 Demuxer::Demuxer(const std::string &filename) {
-    ctx_ = nullptr;
-    int ret = avformat_open_input(&ctx_, filename.c_str(), nullptr, nullptr);
+    AVFormatContext * format_ctx = nullptr;
+    int ret = avformat_open_input(&format_ctx, filename.c_str(), nullptr, nullptr);
 
     if (ret < 0) {
         throw ffmpeg::util::get_ffmpeg_error(ret);
     }
 
-    ret = avformat_find_stream_info(ctx_, nullptr);
+    ret = avformat_find_stream_info(format_ctx, nullptr);
     if (ret < 0) {
-        avformat_close_input(&ctx_);
+        avformat_close_input(&format_ctx);
         throw ffmpeg::util::get_ffmpeg_error(ret);
     }
+
+    ctx_.reset(format_ctx);
 }
-
-Demuxer::~Demuxer() { avformat_close_input(&ctx_); }
 
 std::vector<Stream> Demuxer::streams() const {
     std::vector<Stream> streams;
@@ -67,7 +66,7 @@ ffmpeg::util::ffmpeg_result<Packet> Demuxer::readPacket() {
             AVERROR(ENOMEM), "Failed to allocate packet."));
     }
 
-    int ret = av_read_frame(ctx_, packet);
+    int ret = av_read_frame(ctx_.get(), packet);
 
     if (ret < 0) {
         av_packet_free(&packet);
@@ -81,7 +80,7 @@ ffmpeg::util::ffmpeg_result<Packet> Demuxer::readPacket() {
 int Demuxer::streamCount() const { return ctx_->nb_streams; }
 
 int Demuxer::bestVideoStreamIndex() const {
-    return av_find_best_stream(ctx_, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr,
+    return av_find_best_stream(ctx_.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr,
                                0);
 }
 
