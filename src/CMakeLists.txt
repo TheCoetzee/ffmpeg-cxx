@@ -9,7 +9,7 @@ target_sources(ffmpeg
             module.ixx
 )
 target_compile_features(ffmpeg PUBLIC cxx_std_23)
-target_link_libraries(ffmpeg PUBLIC ffmpeg_frame ffmpeg_util ffmpeg_format ffmpeg_codec)
+target_link_libraries(ffmpeg PUBLIC ffmpeg_util ffmpeg_format ffmpeg_codec)
 target_include_directories(ffmpeg PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include/ffmpeg-cpp>
