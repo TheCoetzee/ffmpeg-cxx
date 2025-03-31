@@ -16,7 +16,8 @@
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_CXX_FLAGS": "-Xclang -fno-validate-pch"
+        "CMAKE_CXX_FLAGS": "-Xclang -fno-validate-pch",
+        "FFMPEG_DEVELOPMENT": "ON",
       }
     }
   ]

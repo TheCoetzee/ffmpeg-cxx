@@ -6,7 +6,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+if(FFMPEG_DEVELOPMENT)
     message(STATUS "Adding development compiler flags.")
     add_compile_options(
         -Wall
