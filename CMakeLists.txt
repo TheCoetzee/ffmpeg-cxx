@@ -6,7 +6,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(FFMPEG REQUIRED COMPONENTS avformat avcodec avutil)
 if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message(STATUS "Adding development compiler flags.")
     add_compile_options(
@@ -21,9 +20,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
 
     add_link_options(-fsanitize=address,undefined)
 endif()
+
+find_package(FFMPEG REQUIRED COMPONENTS avformat avcodec avutil swscale avfilter)
+
 add_subdirectory(src)
 
-install(TARGETS ffmpeg ffmpeg_format ffmpeg_codec ffmpeg_util
+install(TARGETS ffmpeg ffmpeg_format ffmpeg_codec ffmpeg_util ffmpeg_filter
   EXPORT ffmpeg-cpp-targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
