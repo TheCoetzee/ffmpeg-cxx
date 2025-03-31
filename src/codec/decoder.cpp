@@ -14,7 +14,7 @@ import ffmpeg.format;
 
 namespace ffmpeg::codec {
 
-Decoder::Decoder(AVCodecParameters *params) {
+Decoder::Decoder(const AVCodecParameters *params) {
     const AVCodec *codec = avcodec_find_decoder(params->codec_id);
     if (codec == nullptr) {
         throw ffmpeg::util::FFmpegError(AVERROR(ENOMEM), "Unsupported codec");

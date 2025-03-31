@@ -33,7 +33,7 @@ void SwsContextDeleter::operator()(SwsContext *ctx) const {
     }
 }
 
-VideoFilter::VideoFilter(AVCodecParameters *input_codecpar,
+VideoFilter::VideoFilter(const AVCodecParameters *input_codecpar,
                          AVRational input_time_base, int output_framerate,
                          AVPixelFormat output_pix_fmt)
     : target_width_(input_codecpar->width),
@@ -60,7 +60,7 @@ VideoFilter::VideoFilter(AVCodecParameters *input_codecpar,
     }
 }
 
-void VideoFilter::initializeFilterGraph(AVCodecParameters *input_codecpar,
+void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
                                         AVRational input_time_base,
                                         int output_framerate) {
     int ret = 0;

@@ -28,7 +28,7 @@ struct SwsContextDeleter {
 
 class VideoFilter {
 public:
-    VideoFilter(AVCodecParameters *input_codecpar, AVRational input_time_base,
+    VideoFilter(const AVCodecParameters *input_codecpar, AVRational input_time_base,
                 int output_framerate, AVPixelFormat output_pix_fmt = AV_PIX_FMT_RGB32);
 
     auto filterFrame(util::Frame &input_frame) -> util::ffmpeg_result<util::Frame>;
@@ -39,7 +39,7 @@ public:
 private:
     void initializeScaler(int srcW, int srcH, AVPixelFormat srcFormat,
                           int dstW, int dstH, AVPixelFormat dstFormat);
-    void initializeFilterGraph(AVCodecParameters *input_codecpar, AVRational input_time_base, int output_framerate);
+    void initializeFilterGraph(const AVCodecParameters *input_codecpar, AVRational input_time_base, int output_framerate);
 
     std::unique_ptr<AVFilterGraph, AVFilterGraphDeleter> filter_graph_;
     AVFilterContext *buffersrc_ctx_ = nullptr; // Managed by the graph
