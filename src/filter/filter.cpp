@@ -67,23 +67,15 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
     const AVFilter *buffersrc = avfilter_get_by_name("buffer");
     const AVFilter *buffersink = avfilter_get_by_name("buffersink");
 
-    // RAII wrappers for AVFilterInOut
-    struct InOutRAII {
-        AVFilterInOut *ptr = nullptr;
-        ~InOutRAII() {
-            if (ptr != nullptr) {
-                avfilter_inout_free(&ptr);
-            }
-        }
-    } outputs, inputs;
-
-    outputs.ptr = avfilter_inout_alloc();
-    inputs.ptr = avfilter_inout_alloc();
+    auto *outputs = avfilter_inout_alloc();
+    auto *inputs = avfilter_inout_alloc();
     std::unique_ptr<AVFilterGraph, AVFilterGraphDeleter> graph(
         avfilter_graph_alloc());
 
     // Check allocations
-    if ((outputs.ptr == nullptr) || (inputs.ptr == nullptr) || !graph) {
+    if ((outputs == nullptr) || (inputs == nullptr) || !graph) {
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
         throw util::get_ffmpeg_error(AVERROR(ENOMEM));
     }
 
@@ -100,6 +92,8 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
                                        args.c_str(), nullptr,
                                        filter_graph_.get());
     if (ret < 0) {
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
         throw util::get_ffmpeg_error(ret);
     }
 
@@ -107,6 +101,8 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
     ret = avfilter_graph_create_filter(&buffersink_ctx_, buffersink, "out",
                                        nullptr, nullptr, filter_graph_.get());
     if (ret < 0) {
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
         throw util::get_ffmpeg_error(ret);
     }
 
@@ -115,38 +111,41 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
                          reinterpret_cast<uint8_t *>(&target_pix_fmt_),
                          sizeof(target_pix_fmt_), AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
         throw util::get_ffmpeg_error(ret);
     }
 
     // Configure inputs/outputs for graph parsing
-    outputs.ptr->name = av_strdup("in");
-    outputs.ptr->filter_ctx = buffersrc_ctx_;
-    outputs.ptr->pad_idx = 0;
-    outputs.ptr->next = nullptr;
+    outputs->name = av_strdup("in");
+    outputs->filter_ctx = buffersrc_ctx_;
+    outputs->pad_idx = 0;
+    outputs->next = nullptr;
 
-    inputs.ptr->name = av_strdup("out");
-    inputs.ptr->filter_ctx = buffersink_ctx_;
-    inputs.ptr->pad_idx = 0;
-    inputs.ptr->next = nullptr;
+    inputs->name = av_strdup("out");
+    inputs->filter_ctx = buffersink_ctx_;
+    inputs->pad_idx = 0;
+    inputs->next = nullptr;
 
     auto filter_spec = std::format("fps={}", output_framerate);
 
-    AVFilterInOut *inputs_ptr = inputs.ptr;
-    AVFilterInOut *outputs_ptr = outputs.ptr;
     ret = avfilter_graph_parse_ptr(filter_graph_.get(), filter_spec.c_str(),
-                                   &inputs_ptr, &outputs_ptr, nullptr);
+                                   &inputs, &outputs, nullptr);
     if (ret < 0) {
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
         throw util::get_ffmpeg_error(ret);
     }
 
     // Configure graph
     ret = avfilter_graph_config(filter_graph_.get(), nullptr);
     if (ret < 0) {
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
         throw util::get_ffmpeg_error(ret);
     }
-
-    // Note: The RAII destructors automatically clean up outputs.ptr and
-    // inputs.ptr
+    avfilter_inout_free(&inputs);
+    avfilter_inout_free(&outputs);
 }
 
 void VideoFilter::initializeScaler(int srcW, int srcH, AVPixelFormat srcFormat,
