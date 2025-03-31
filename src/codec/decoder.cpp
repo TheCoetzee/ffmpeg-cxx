@@ -28,12 +28,12 @@ Decoder::Decoder(AVCodecParameters *params) {
     ctx_.reset(context_raw);
     int ret = avcodec_parameters_to_context(ctx_.get(), params);
     if (ret < 0) {
-        throw std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
+        throw ffmpeg::util::get_ffmpeg_error(ret);
     }
 
     ret = avcodec_open2(ctx_.get(), codec, nullptr);
     if (ret < 0) {
-        throw std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
+        throw ffmpeg::util::get_ffmpeg_error(ret);
     }
 }
 
