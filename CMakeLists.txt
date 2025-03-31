@@ -7,7 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(FFMPEG REQUIRED COMPONENTS avformat avcodec avutil)
+if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(STATUS "Adding development compiler flags.")
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+        -fsanitize=address,undefined
+        -fno-omit-frame-pointer
+        -Wshadow
+        -Wconversion
+    )
 
+    add_link_options(-fsanitize=address,undefined)
+endif()
 add_subdirectory(src)
 
 install(TARGETS ffmpeg ffmpeg_format ffmpeg_codec ffmpeg_util

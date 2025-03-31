@@ -15,12 +15,12 @@ import ffmpeg.util;
 export namespace ffmpeg::format {
 
 struct Stream {
-    Stream(const AVStream *stream);
-    int index() const;
-    AVMediaType type() const;
-    AVCodecParameters codecParameters() const;
-    AVRational timeBase() const;
-    AVRational averageFrameRate() const;
+    explicit Stream(const AVStream *stream);
+    [[nodiscard]] auto index() const -> int;
+    [[nodiscard]] auto type() const -> AVMediaType;
+    [[nodiscard]] auto codecParameters() const -> AVCodecParameters;
+    [[nodiscard]] auto timeBase() const -> AVRational;
+    [[nodiscard]] auto averageFrameRate() const -> AVRational;
 
 private:
     const AVStream *stream_;
@@ -28,7 +28,7 @@ private:
 
 struct AVFormatContextDeleter {
     void operator()(AVFormatContext *ctx) const {
-        if (ctx) {
+        if (ctx != nullptr) {
             // avformat_close_input expects AVFormatContext**
             // It potentially NULLs the pointer passed to it.
             AVFormatContext *ptr_to_close = ctx;
@@ -40,12 +40,12 @@ struct AVFormatContextDeleter {
 };
 
 struct Demuxer {
-    Demuxer(const std::string &filename);
+    explicit Demuxer(const std::string &filename);
 
-    std::vector<Stream> streams() const;
-    util::ffmpeg_result<util::Packet> readPacket();
-    int streamCount() const;
-    int bestVideoStreamIndex() const;
+    [[nodiscard]] auto streams() const -> std::vector<Stream>;
+    auto readPacket() -> util::ffmpeg_result<util::Packet>;
+    [[nodiscard]] auto streamCount() const -> unsigned int;
+    [[nodiscard]] auto bestVideoStreamIndex() const -> int;
 
 private:
     std::unique_ptr<AVFormatContext, AVFormatContextDeleter> ctx_;

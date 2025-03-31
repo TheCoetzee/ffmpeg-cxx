@@ -17,7 +17,7 @@ public:
               std::format("FFmpeg error {}: {}", errCode, message)),
           errorCode_(errCode) {}
 
-    int errorCode() const { return errorCode_; }
+    [[nodiscard]] auto errorCode() const -> int { return errorCode_; }
 
 private:
     int errorCode_;
@@ -31,38 +31,36 @@ using FFmpegErrors = std::variant<FFmpegError, FFmpegEOF, FFmpegAGAIN>;
 template <typename T> using ffmpeg_result = std::expected<T, FFmpegErrors>;
 
 template <typename T>
-ffmpeg_result<T> check_ffmpeg_result(int errCode, T value) {
+auto check_ffmpeg_result(int errCode, T value) -> ffmpeg_result<T> {
     if (errCode >= 0) {
         return value;
-    } else {
-        char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
-        av_strerror(errCode, errbuf, sizeof(errbuf));
-        return std::unexpected(FFmpegError(errCode, errbuf));
     }
+    std::array<char, AV_ERROR_MAX_STRING_SIZE> errbuf{0};
+    av_strerror(errCode, errbuf.data(), errbuf.size());
+    return std::unexpected(FFmpegError(errCode, errbuf.data()));
 }
 
-ffmpeg_result<void> check_ffmpeg_result(int errCode) {
+auto check_ffmpeg_result(int errCode) -> ffmpeg_result<void> {
     if (errCode >= 0) {
         return {};
-    } else {
-        char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
-        av_strerror(errCode, errbuf, sizeof(errbuf));
-        return std::unexpected(FFmpegError(errCode, errbuf));
     }
+    std::array<char, AV_ERROR_MAX_STRING_SIZE> errbuf{0};
+    av_strerror(errCode, errbuf.data(), errbuf.size());
+    return std::unexpected(FFmpegError(errCode, errbuf.data()));
 }
 
-FFmpegError get_ffmpeg_error(int errCode) {
-    char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
-    av_strerror(errCode, errbuf, sizeof(errbuf));
-    return FFmpegError(errCode, errbuf);
+auto get_ffmpeg_error(int errCode) -> FFmpegError {
+    std::array<char, AV_ERROR_MAX_STRING_SIZE> errbuf{0};
+    av_strerror(errCode, errbuf.data(), errbuf.size());
+    return {errCode, errbuf.data()};
 }
 
 void throw_on_ffmpeg_error(int errCode, const std::string &contextMessage) {
     if (errCode < 0) {
-        char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
-        av_strerror(errCode, errbuf, sizeof(errbuf));
+        std::array<char, AV_ERROR_MAX_STRING_SIZE> errbuf{0};
+        av_strerror(errCode, errbuf.data(), errbuf.size());
         throw FFmpegError(errCode,
-                          std::format("{}: {}", contextMessage, errbuf));
+                          std::format("{}: {}", contextMessage, errbuf.data()));
     }
 }
 } // namespace ffmpeg::util

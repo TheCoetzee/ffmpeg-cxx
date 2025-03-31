@@ -15,7 +15,7 @@ export namespace ffmpeg::codec {
 
 struct AVCodecContextDeleter {
     void operator()(AVCodecContext *ctx) const {
-        if (ctx) {
+        if (ctx != nullptr) {
             avcodec_free_context(&ctx);
         }
     }
@@ -25,8 +25,8 @@ class Decoder {
 public:
     explicit Decoder(AVCodecParameters *params);
 
-    ffmpeg::util::ffmpeg_result<util::Frame> decodeNextFrame();
-    ffmpeg::util::ffmpeg_result<void> sendPacket(util::Packet &packet);
+    auto decodeNextFrame() -> ffmpeg::util::ffmpeg_result<util::Frame>;
+    auto sendPacket(util::Packet &packet) -> ffmpeg::util::ffmpeg_result<void>;
 
 private:
     bool eof_reached_;

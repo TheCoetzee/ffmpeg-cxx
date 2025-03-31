@@ -16,7 +16,10 @@ struct Packet {
     ~Packet() { av_packet_free(&packet_); }
 
     Packet(const Packet &other) : packet_(av_packet_clone(other.packet_)) {}
-    Packet &operator=(const Packet &other) {
+    auto operator=(const Packet &other) -> Packet & {
+        if (&other == this) {
+            return *this;
+        }
         av_packet_unref(packet_);
         auto ret = av_packet_ref(packet_, other.packet_);
         if (ret < 0) {
@@ -27,13 +30,13 @@ struct Packet {
 
     Packet(Packet &&other) noexcept
         : packet_(std::exchange(other.packet_, nullptr)) {}
-    Packet &operator=(Packet &&other) noexcept {
+    auto operator=(Packet &&other) noexcept -> Packet & {
         av_packet_unref(packet_);
         av_packet_move_ref(packet_, other.packet_);
         return *this;
     }
 
-    AVPacket *get() { return packet_; }
+    auto get() -> AVPacket * { return packet_; }
 
 private:
     AVPacket *packet_;

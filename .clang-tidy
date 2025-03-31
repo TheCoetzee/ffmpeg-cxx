@@ -1,0 +1,19 @@
+---
+Checks:
+  -*,
+  -llvm-header-guard,
+  modernize-*,
+  cppcoreguidelines-*,
+  performance-*,
+  bugprone-*,
+  readability-*,
+  portability-*,
+  google-*,
+  clang-analyzer-*
+
+HeaderFilterRegex: '.*'
+
+FormatStyle: file
+
+ExtraArgs:
+  - -std=c++23

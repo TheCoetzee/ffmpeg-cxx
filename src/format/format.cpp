@@ -1,5 +1,7 @@
 module;
 
+#include <memory>
+#include <span>
 #include <expected>
 #include <string>
 #include <vector>
@@ -15,15 +17,15 @@ namespace ffmpeg::format {
 
 Stream::Stream(const AVStream *stream) : stream_(stream) {}
 
-int Stream::index() const { return stream_->index; }
+auto Stream::index() const -> int { return stream_->index; }
 
-AVMediaType Stream::type() const { return stream_->codecpar->codec_type; }
+auto Stream::type() const -> AVMediaType { return stream_->codecpar->codec_type; }
 
-AVCodecParameters Stream::codecParameters() const { return *stream_->codecpar; }
+auto Stream::codecParameters() const -> AVCodecParameters { return *stream_->codecpar; }
 
-AVRational Stream::timeBase() const { return stream_->time_base; }
+auto Stream::timeBase() const -> AVRational { return stream_->time_base; }
 
-AVRational Stream::averageFrameRate() const { return stream_->avg_frame_rate; }
+auto Stream::averageFrameRate() const -> AVRational { return stream_->avg_frame_rate; }
 
 
 Demuxer::Demuxer(const std::string &filename) {
@@ -43,15 +45,16 @@ Demuxer::Demuxer(const std::string &filename) {
     ctx_.reset(format_ctx);
 }
 
-std::vector<Stream> Demuxer::streams() const {
+auto Demuxer::streams() const -> std::vector<Stream> {
     std::vector<Stream> streams;
-    for (unsigned int i = 0; i < ctx_->nb_streams; ++i) {
-        streams.emplace_back(ctx_->streams[i]);
+    std::span raw_streams{ctx_->streams, ctx_->nb_streams};
+    for (auto* stream: raw_streams) {
+        streams.emplace_back(stream);
     }
     return streams;
 }
 
-ffmpeg::util::ffmpeg_result<util::Packet> Demuxer::readPacket() {
+auto Demuxer::readPacket() -> ffmpeg::util::ffmpeg_result<util::Packet> {
     util::Packet packet;
 
     int ret = av_read_frame(ctx_.get(), packet.get());
@@ -64,9 +67,9 @@ ffmpeg::util::ffmpeg_result<util::Packet> Demuxer::readPacket() {
     }
     return packet;
 }
-int Demuxer::streamCount() const { return ctx_->nb_streams; }
+auto Demuxer::streamCount() const -> unsigned int { return ctx_->nb_streams; }
 
-int Demuxer::bestVideoStreamIndex() const {
+auto Demuxer::bestVideoStreamIndex() const -> int {
     return av_find_best_stream(ctx_.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr,
                                0);
 }

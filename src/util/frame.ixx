@@ -15,7 +15,10 @@ struct Frame {
     ~Frame() { av_frame_free(&frame_); }
 
     Frame(const Frame &other) : frame_(av_frame_clone(other.frame_)) {}
-    Frame &operator=(const Frame &other) {
+    auto operator=(const Frame &other) -> Frame & {
+        if (&other == this) {
+            return *this;
+        }
         av_frame_unref(frame_);
         auto ret = av_frame_ref(frame_, other.frame_);
         if (ret < 0) {
@@ -24,14 +27,14 @@ struct Frame {
         return *this;
     }
 
-    Frame(Frame &&other) : frame_(std::exchange(other.frame_, nullptr)) {}
-    Frame &operator=(Frame &&other) {
+    Frame(Frame &&other) noexcept : frame_(std::exchange(other.frame_, nullptr)) {}
+    auto operator=(Frame &&other) noexcept -> Frame & {
         av_frame_unref(frame_);
         av_frame_move_ref(frame_, other.frame_);
         return *this;
     }
 
-    AVFrame *get() { return frame_; }
+    auto get() -> AVFrame * { return frame_; }
 
 private:
     AVFrame *frame_;
