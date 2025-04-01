@@ -40,6 +40,15 @@ auto check_ffmpeg_result(int errCode, T value) -> ffmpeg_result<T> {
     return std::unexpected(FFmpegError(errCode, errbuf.data()));
 }
 
+
+template <typename T>
+auto get_result_value(ffmpeg_result<T> result) -> T {
+    if (!result.has_value()) {
+        throw result.error();
+    }
+    return result.value();
+}
+
 auto check_ffmpeg_result(int errCode) -> ffmpeg_result<void> {
     if (errCode >= 0) {
         return {};

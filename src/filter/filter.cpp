@@ -3,7 +3,9 @@ module;
 #include <expected>
 #include <format>
 #include <memory>
+#include <print>
 #include <stdexcept>
+#include <optional>
 
 extern "C" {
 #include <libavcodec/avcodec.h> // For AVCodecParameters
@@ -13,6 +15,7 @@ extern "C" {
 #include <libavutil/frame.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h> // For pixel format names
+#include <libavutil/pixfmt.h>
 #include <libswscale/swscale.h>
 }
 
@@ -33,37 +36,28 @@ void SwsContextDeleter::operator()(SwsContext *ctx) const {
     }
 }
 
-VideoFilter::VideoFilter(const AVCodecParameters *input_codecpar,
-                         AVRational input_time_base, int output_framerate,
-                         AVPixelFormat output_pix_fmt)
-    : target_width_(input_codecpar->width),
-      target_height_(input_codecpar->height), target_pix_fmt_(output_pix_fmt) {
-    if (input_codecpar->codec_type != AVMEDIA_TYPE_VIDEO) {
-        throw std::runtime_error("VideoFilter can only process video streams.");
-    }
-    if (input_codecpar->width <= 0 || input_codecpar->height <= 0 ||
-        input_codecpar->format == AV_PIX_FMT_NONE) {
+VideoFilter::VideoFilter(util::Frame const &frame, AVRational input_time_base,
+                         int output_framerate, int output_width,
+                         int output_height, AVPixelFormat output_pix_fmt)
+    : target_width_(frame.width()), target_height_(frame.height()),
+      target_pix_fmt_(output_pix_fmt) {
+    if (frame.width() <= 0 || frame.height() <= 0 ||
+        frame.format() == AV_PIX_FMT_NONE) {
         throw std::runtime_error(
             "Input codec parameters lack valid dimensions or pixel format.");
     }
 
-    // 1. Initialize Filter Graph for Frame Rate Conversion
-    initializeFilterGraph(input_codecpar, input_time_base, output_framerate);
-
-    // 2. Initialize Scaler for Color Space Conversion (if necessary)
-    // Note: Scaler might be re-initialized later if dimensions change,
-    // but we initialize it here based on input params.
-    if (static_cast<AVPixelFormat>(input_codecpar->format) != output_pix_fmt) {
-        initializeScaler(input_codecpar->width, input_codecpar->height,
-                         static_cast<AVPixelFormat>(input_codecpar->format),
-                         target_width_, target_height_, target_pix_fmt_);
-    }
+    initializeFilterGraph(frame, input_time_base, output_framerate,
+                          output_width, output_height);
 }
 
-void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
+void VideoFilter::initializeFilterGraph(util::Frame const &input_frame,
                                         AVRational input_time_base,
-                                        int output_framerate) {
-    int ret = 0;
+                                        int output_framerate, int output_width,
+                                        int output_height) {
+    auto width = input_frame.width();
+    auto height = input_frame.height();
+    std::println("Creating filter for frame: {}x{}", width, height);
     const AVFilter *buffersrc = avfilter_get_by_name("buffer");
     const AVFilter *buffersink = avfilter_get_by_name("buffersink");
 
@@ -80,17 +74,19 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
     }
 
     filter_graph_ = std::move(graph); // Transfer ownership
+    //
+    auto sar = input_frame.sample_aspect_ratio();
 
-    auto args = std::format(
-        "video_size={}x{}:pix_fmt={}:time_base={}/{}:pixel_aspect={}/{}",
-        input_codecpar->width, input_codecpar->height, input_codecpar->format,
-        input_time_base.num, input_time_base.den,
-        input_codecpar->sample_aspect_ratio.num,
-        input_codecpar->sample_aspect_ratio.den);
+    auto args =
+        std::format("video_size={}x{}:pix_fmt={}:time_base={}/"
+                    "{}:pixel_aspect={}/{}",
+                    width, height, static_cast<int>(input_frame.format()),
+                    input_time_base.num, input_time_base.den, sar.num, sar.den);
+    std::println("Args: {}", args);
 
-    ret = avfilter_graph_create_filter(&buffersrc_ctx_, buffersrc, "in",
-                                       args.c_str(), nullptr,
-                                       filter_graph_.get());
+    auto ret = avfilter_graph_create_filter(&buffersrc_ctx_, buffersrc, "in",
+                                            args.c_str(), nullptr,
+                                            filter_graph_.get());
     if (ret < 0) {
         avfilter_inout_free(&inputs);
         avfilter_inout_free(&outputs);
@@ -127,7 +123,9 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
     inputs->pad_idx = 0;
     inputs->next = nullptr;
 
-    auto filter_spec = std::format("fps={}", output_framerate);
+    auto filter_spec =
+        std::format("fps={},scale=width={}:height={}", output_framerate, width,
+                    height, output_width, output_height);
 
     ret = avfilter_graph_parse_ptr(filter_graph_.get(), filter_spec.c_str(),
                                    &inputs, &outputs, nullptr);
@@ -148,32 +146,9 @@ void VideoFilter::initializeFilterGraph(const AVCodecParameters *input_codecpar,
     avfilter_inout_free(&outputs);
 }
 
-void VideoFilter::initializeScaler(int srcW, int srcH, AVPixelFormat srcFormat,
-                                   int dstW, int dstH,
-                                   AVPixelFormat dstFormat) {
-    // Only initialize if needed
-    if (srcW == dstW && srcH == dstH && srcFormat == dstFormat) {
-        sws_ctx_.reset(); // No scaling needed
-        return;
-    }
-
-    SwsContext *scaler =
-        sws_getContext(srcW, srcH, srcFormat, dstW, dstH, dstFormat,
-                       SWS_BILINEAR, nullptr, nullptr, nullptr);
-    if (scaler == nullptr) {
-        throw std::runtime_error(std::format(
-            "Failed to create SwsContext for format conversion from {} to {}",
-            av_get_pix_fmt_name(srcFormat), av_get_pix_fmt_name(dstFormat)));
-    }
-    sws_ctx_.reset(scaler);
-    target_width_ = dstW; // Store actual target dimensions
-    target_height_ = dstH;
-}
-
-auto VideoFilter::filterFrame(util::Frame &input_frame)
-    -> util::ffmpeg_result<util::Frame> {
+auto VideoFilter::sendFrame(util::Frame &input_frame) -> std::optional<util::FFmpegErrors> {
     if (eof_received_from_graph_) {
-        return std::unexpected(util::FFmpegEOF{});
+        return util::FFmpegEOF{};
     }
 
     // --- Step 1: Send frame to the filter graph ---
@@ -186,89 +161,37 @@ auto VideoFilter::filterFrame(util::Frame &input_frame)
             // Continue to try receiving frames below
         } else {
             // A real error occurred sending the frame
-            return std::unexpected(util::get_ffmpeg_error(ret));
+            return util::get_ffmpeg_error(ret);
         }
     }
+    return {};
+}
 
-    // --- Step 2: Receive filtered frame from the graph ---
-    while (true) {
-        util::Frame filtered_frame;
-        ret = av_buffersink_get_frame(buffersink_ctx_, filtered_frame.get());
+auto VideoFilter::filterFrame() -> util::ffmpeg_result<util::Frame> {
+    util::Frame filtered_frame;
+    auto ret = av_buffersink_get_frame(buffersink_ctx_, filtered_frame.get());
 
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-            // Need more input frames or graph is flushed
-            if (ret == AVERROR_EOF) {
-                eof_received_from_graph_ = true;
-            }
-            // If we successfully sent a frame earlier, return EAGAIN to signal
-            // that the *input* frame was consumed, but no *output* is ready
-            // yet. If we couldn't send a frame (due to graph EOF/EAGAIN), and
-            // also can't receive, signal EOF if the graph is done, otherwise
-            // EAGAIN.
-            if (eof_received_from_graph_) {
-                return std::unexpected(util::FFmpegEOF{});
-            }
-            return std::unexpected(util::FFmpegAGAIN{});
+    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+        // Need more input frames or graph is flushed
+        if (ret == AVERROR_EOF) {
+            eof_received_from_graph_ = true;
         }
-        if (ret < 0) {
-            // A real error receiving frame
-            return std::unexpected(util::get_ffmpeg_error(ret));
+        // If we successfully sent a frame earlier, return EAGAIN to signal
+        // that the *input* frame was consumed, but no *output* is ready
+        // yet. If we couldn't send a frame (due to graph EOF/EAGAIN), and
+        // also can't receive, signal EOF if the graph is done, otherwise
+        // EAGAIN.
+        if (eof_received_from_graph_) {
+            return std::unexpected(util::FFmpegEOF{});
         }
+        return std::unexpected(util::FFmpegAGAIN{});
+    }
+    if (ret < 0) {
+        // A real error receiving frame
+        return std::unexpected(util::get_ffmpeg_error(ret));
+    }
 
-        // Check if scaler is needed (pixel format differs or scaler is already
-        // initialized)
-        if (sws_ctx_ || static_cast<AVPixelFormat>(
-                            filtered_frame.get()->format) != target_pix_fmt_) {
-            // Re-initialize scaler if dimensions or format changed unexpectedly
-            if (!sws_ctx_ || filtered_frame.get()->width != target_width_ ||
-                filtered_frame.get()->height != target_height_ ||
-                static_cast<AVPixelFormat>(filtered_frame.get()->format) !=
-                    target_pix_fmt_) {
-                initializeScaler(
-                    filtered_frame.get()->width, filtered_frame.get()->height,
-                    static_cast<AVPixelFormat>(filtered_frame.get()->format),
-                    filtered_frame.get()->width, filtered_frame.get()->height,
-                    target_pix_fmt_); // Keep dimensions
-            }
-
-            // If scaler initialization failed or wasn't needed, sws_ctx_ is
-            // null
-            if (sws_ctx_) {
-                util::Frame scaled_frame;
-                // Prepare the destination frame
-                scaled_frame.get()->format = target_pix_fmt_;
-                scaled_frame.get()->width = target_width_;
-                scaled_frame.get()->height = target_height_;
-                ret = av_frame_get_buffer(scaled_frame.get(),
-                                          0); // Allocate buffer
-                if (ret < 0) {
-                    return std::unexpected(util::get_ffmpeg_error(ret));
-                }
-
-                // Perform scaling/conversion
-                ret = sws_scale(
-                    sws_ctx_.get(),
-                    static_cast<const uint8_t *const *>(
-                        filtered_frame.get()->data),
-                    static_cast<int *>(filtered_frame.get()->linesize), 0,
-                    filtered_frame.get()->height,
-                    static_cast<uint8_t **>(scaled_frame.get()->data),
-                    static_cast<int *>(scaled_frame.get()->linesize));
-
-                if (ret < 0) {
-                    return std::unexpected(util::get_ffmpeg_error(ret));
-                }
-                // Copy timestamp and other relevant fields
-                av_frame_copy_props(scaled_frame.get(), filtered_frame.get());
-
-                // Return the scaled frame
-                return scaled_frame; // Move the scaled frame out
-            }
-        }
-        // If no scaling was performed or needed, return the frame from the
-        // filter graph directly
-        return filtered_frame; // Move the filtered frame out
-    } // end while loop for receiving frames
+    return filtered_frame; // Move the filtered frame out
 }
 
 auto VideoFilter::sendEOF() -> util::ffmpeg_result<void> {
