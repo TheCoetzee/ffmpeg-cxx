@@ -31,6 +31,10 @@ Decoder::Decoder(const AVCodecParameters *params) {
         throw ffmpeg::util::get_ffmpeg_error(ret);
     }
 
+    ctx_->thread_count = 0;
+    if ((codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) != 0) {
+        ctx_->thread_type = FF_THREAD_SLICE;
+    }
     ret = avcodec_open2(ctx_.get(), codec, nullptr);
     if (ret < 0) {
         throw ffmpeg::util::get_ffmpeg_error(ret);
@@ -60,7 +64,8 @@ auto Decoder::decodeNextFrame() -> ffmpeg::util::ffmpeg_result<util::Frame> {
     return frame;
 }
 
-auto Decoder::sendPacket(util::Packet &packet) -> ffmpeg::util::ffmpeg_result<void> {
+auto Decoder::sendPacket(util::Packet &packet)
+    -> ffmpeg::util::ffmpeg_result<void> {
     int ret = avcodec_send_packet(ctx_.get(), packet.get());
     if (ret < 0) {
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
