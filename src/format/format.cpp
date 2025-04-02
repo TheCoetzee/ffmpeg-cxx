@@ -1,14 +1,17 @@
 module;
 
+#include <chrono>
+#include <expected>
 #include <memory>
 #include <span>
-#include <expected>
 #include <string>
 #include <vector>
 
 extern "C" {
 #include <libavcodec/packet.h>
 #include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+#include <libavutil/mathematics.h>
 }
 
 module ffmpeg.format;
@@ -19,18 +22,24 @@ Stream::Stream(const AVStream *stream) : stream_(stream) {}
 
 auto Stream::index() const -> int { return stream_->index; }
 
-auto Stream::type() const -> AVMediaType { return stream_->codecpar->codec_type; }
+auto Stream::type() const -> AVMediaType {
+    return stream_->codecpar->codec_type;
+}
 
-auto Stream::codecParameters() const -> AVCodecParameters { return *stream_->codecpar; }
+auto Stream::codecParameters() const -> AVCodecParameters {
+    return *stream_->codecpar;
+}
 
 auto Stream::timeBase() const -> AVRational { return stream_->time_base; }
 
-auto Stream::averageFrameRate() const -> AVRational { return stream_->avg_frame_rate; }
-
+auto Stream::averageFrameRate() const -> AVRational {
+    return stream_->avg_frame_rate;
+}
 
 Demuxer::Demuxer(const std::string &filename) {
-    AVFormatContext * format_ctx = nullptr;
-    int ret = avformat_open_input(&format_ctx, filename.c_str(), nullptr, nullptr);
+    AVFormatContext *format_ctx = nullptr;
+    int ret =
+        avformat_open_input(&format_ctx, filename.c_str(), nullptr, nullptr);
 
     if (ret < 0) {
         throw ffmpeg::util::get_ffmpeg_error(ret);
@@ -48,7 +57,7 @@ Demuxer::Demuxer(const std::string &filename) {
 auto Demuxer::streams() const -> std::vector<Stream> {
     std::vector<Stream> streams;
     std::span raw_streams{ctx_->streams, ctx_->nb_streams};
-    for (auto* stream: raw_streams) {
+    for (auto *stream : raw_streams) {
         streams.emplace_back(stream);
     }
     return streams;
@@ -72,6 +81,19 @@ auto Demuxer::streamCount() const -> unsigned int { return ctx_->nb_streams; }
 auto Demuxer::bestVideoStreamIndex() const -> int {
     return av_find_best_stream(ctx_.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr,
                                0);
+}
+
+auto Demuxer::seek(std::chrono::nanoseconds timestamp) -> void {
+    auto ret = av_seek_frame(
+        ctx_.get(), -1,
+        av_rescale_q(timestamp.count(),
+                     AVRational{std::chrono::nanoseconds::period::num,
+                                std::chrono::nanoseconds::period::den},
+                     AV_TIME_BASE_Q),
+        0);
+    if (ret < 0) {
+        throw util::get_ffmpeg_error(ret);
+    }
 }
 
 } // namespace ffmpeg::format

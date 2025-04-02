@@ -1,5 +1,6 @@
 module;
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -46,6 +47,7 @@ struct Demuxer {
     auto readPacket() -> util::ffmpeg_result<util::Packet>;
     [[nodiscard]] auto streamCount() const -> unsigned int;
     [[nodiscard]] auto bestVideoStreamIndex() const -> int;
+    auto seek(std::chrono::nanoseconds timestamp) -> void;
 
 private:
     std::unique_ptr<AVFormatContext, AVFormatContextDeleter> ctx_;
