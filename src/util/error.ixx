@@ -1,6 +1,7 @@
 module;
 #include <expected>
 #include <format>
+#include <variant>
 #include <stdexcept>
 
 extern "C" {

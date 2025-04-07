@@ -10,6 +10,7 @@ Checks:
   portability-*,
   google-*,
   clang-analyzer-*
+  misc-include-cleaner
 
 HeaderFilterRegex: '.*'
 
