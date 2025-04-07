@@ -73,4 +73,6 @@ auto Decoder::sendPacket(util::Packet &packet)
     return ffmpeg::util::ffmpeg_result<void>{};
 }
 
+auto Decoder::flush() -> void { avcodec_flush_buffers(ctx_.get()); }
+
 } // namespace ffmpeg::codec

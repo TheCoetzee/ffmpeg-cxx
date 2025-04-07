@@ -57,7 +57,6 @@ void VideoFilter::initializeFilterGraph(util::Frame const &input_frame,
                                         int output_height) {
     auto width = input_frame.width();
     auto height = input_frame.height();
-    std::println("Creating filter for frame: {}x{}", width, height);
     const AVFilter *buffersrc = avfilter_get_by_name("buffer");
     const AVFilter *buffersink = avfilter_get_by_name("buffersink");
 
@@ -82,7 +81,6 @@ void VideoFilter::initializeFilterGraph(util::Frame const &input_frame,
                     "{}:pixel_aspect={}/{}",
                     width, height, static_cast<int>(input_frame.format()),
                     input_time_base.num, input_time_base.den, sar.num, sar.den);
-    std::println("Args: {}", args);
 
     auto ret = avfilter_graph_create_filter(&buffersrc_ctx_, buffersrc, "in",
                                             args.c_str(), nullptr,

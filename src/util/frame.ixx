@@ -34,6 +34,9 @@ struct Frame {
     Frame(Frame &&other) noexcept
         : frame_(std::exchange(other.frame_, nullptr)) {}
     auto operator=(Frame &&other) noexcept -> Frame & {
+        if (&other == this) {
+            return *this;
+        }
         av_frame_unref(frame_);
         av_frame_move_ref(frame_, other.frame_);
         return *this;

@@ -27,6 +27,7 @@ public:
 
     auto decodeNextFrame() -> ffmpeg::util::ffmpeg_result<util::Frame>;
     auto sendPacket(util::Packet &packet) -> ffmpeg::util::ffmpeg_result<void>;
+    auto flush() -> void;
 
 private:
     bool eof_reached_;
