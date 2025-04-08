@@ -16,12 +16,21 @@ import ffmpeg.util;
 export namespace ffmpeg::format {
 
 struct Stream {
-    explicit Stream(const AVStream *stream);
-    [[nodiscard]] auto index() const -> int;
-    [[nodiscard]] auto type() const -> AVMediaType;
-    [[nodiscard]] auto codecParameters() const -> AVCodecParameters;
-    [[nodiscard]] auto timeBase() const -> AVRational;
-    [[nodiscard]] auto averageFrameRate() const -> AVRational;
+    constexpr explicit Stream(const AVStream *stream) : stream_(stream) {}
+    [[nodiscard]] constexpr auto index() const -> int { return stream_->index; }
+    [[nodiscard]] constexpr auto type() const -> AVMediaType {
+        return stream_->codecpar->codec_type;
+    }
+    [[nodiscard]] constexpr auto codecParameters() const
+        -> AVCodecParameters * {
+        return stream_->codecpar;
+    }
+    [[nodiscard]] constexpr auto timeBase() const -> AVRational {
+        return stream_->time_base;
+    }
+    [[nodiscard]] constexpr auto averageFrameRate() const -> AVRational {
+        return stream_->avg_frame_rate;
+    }
 
 private:
     const AVStream *stream_;

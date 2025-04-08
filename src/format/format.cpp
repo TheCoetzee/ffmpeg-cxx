@@ -18,24 +18,6 @@ module ffmpeg.format;
 
 namespace ffmpeg::format {
 
-Stream::Stream(const AVStream *stream) : stream_(stream) {}
-
-auto Stream::index() const -> int { return stream_->index; }
-
-auto Stream::type() const -> AVMediaType {
-    return stream_->codecpar->codec_type;
-}
-
-auto Stream::codecParameters() const -> AVCodecParameters {
-    return *stream_->codecpar;
-}
-
-auto Stream::timeBase() const -> AVRational { return stream_->time_base; }
-
-auto Stream::averageFrameRate() const -> AVRational {
-    return stream_->avg_frame_rate;
-}
-
 Demuxer::Demuxer(const std::string &filename) {
     AVFormatContext *format_ctx = nullptr;
     int ret =
