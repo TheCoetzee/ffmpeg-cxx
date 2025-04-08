@@ -14,8 +14,9 @@ import ffmpeg.format;
 
 namespace ffmpeg::codec {
 
-Decoder::Decoder(const AVCodecParameters *params) {
-    const AVCodec *codec = avcodec_find_decoder(params->codec_id);
+Decoder::Decoder(ffmpeg::format::Stream const& stream) {
+    auto params = stream.codecParameters();
+    const AVCodec *codec = avcodec_find_decoder(params.codec_id);
     if (codec == nullptr) {
         throw ffmpeg::util::FFmpegError(AVERROR(ENOMEM), "Unsupported codec");
     }
@@ -26,7 +27,7 @@ Decoder::Decoder(const AVCodecParameters *params) {
                                         "Failed to allocate codec context");
     }
     ctx_.reset(context_raw);
-    int ret = avcodec_parameters_to_context(ctx_.get(), params);
+    int ret = avcodec_parameters_to_context(ctx_.get(), &params);
     if (ret < 0) {
         throw ffmpeg::util::get_ffmpeg_error(ret);
     }

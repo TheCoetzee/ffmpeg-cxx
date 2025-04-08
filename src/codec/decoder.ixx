@@ -23,7 +23,7 @@ struct AVCodecContextDeleter {
 
 class Decoder {
 public:
-    explicit Decoder(const AVCodecParameters *params);
+    explicit Decoder(ffmpeg::format::Stream const& stream);
 
     auto decodeNextFrame() -> ffmpeg::util::ffmpeg_result<util::Frame>;
     auto sendPacket(util::Packet &packet) -> ffmpeg::util::ffmpeg_result<void>;
