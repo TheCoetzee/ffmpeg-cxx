@@ -145,7 +145,7 @@ void VideoFilter::initializeFilterGraph(util::Frame const &input_frame,
 
 auto VideoFilter::sendFrame(util::Frame &input_frame) -> std::optional<util::FFmpegErrors> {
     if (eof_received_from_graph_) {
-        return util::FFmpegEOF{};
+        return util::ERREof;
     }
 
     // --- Step 1: Send frame to the filter graph ---
@@ -179,9 +179,9 @@ auto VideoFilter::filterFrame() -> util::ffmpeg_result<util::Frame> {
         // also can't receive, signal EOF if the graph is done, otherwise
         // EAGAIN.
         if (eof_received_from_graph_) {
-            return std::unexpected(util::FFmpegEOF{});
+            return std::unexpected(util::ERREof);
         }
-        return std::unexpected(util::FFmpegAGAIN{});
+        return std::unexpected(util::ErrAgain);
     }
     if (ret < 0) {
         // A real error receiving frame
@@ -203,7 +203,7 @@ auto VideoFilter::sendEOF() -> util::ffmpeg_result<void> {
     // After sending EOF, continue trying to receive frames until the sink
     // signals EOF. Return AGAIN to prompt the caller to keep calling
     // filterFrame.
-    return std::unexpected(util::FFmpegAGAIN{});
+    return std::unexpected(util::ErrAgain);
 }
 
 } // namespace ffmpeg::filter

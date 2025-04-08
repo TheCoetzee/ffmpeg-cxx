@@ -1,8 +1,9 @@
 module;
 #include <expected>
 #include <format>
-#include <variant>
 #include <stdexcept>
+#include <string_view>
+#include <variant>
 
 extern "C" {
 #include <libavutil/avutil.h>
@@ -24,8 +25,16 @@ private:
     int errorCode_;
 };
 
-struct FFmpegEOF {};
-struct FFmpegAGAIN {};
+struct FFmpegEOF : public std::runtime_error {
+    explicit FFmpegEOF(const std::string &err) : std::runtime_error(err) {}
+};
+
+struct FFmpegAGAIN : public std::runtime_error {
+    constexpr explicit FFmpegAGAIN(const std::string &err) : std::runtime_error(err) {}
+};
+
+const FFmpegEOF ERREof{"EOF"};
+const FFmpegAGAIN ErrAgain{"AGAIN"};
 
 using FFmpegErrors = std::variant<FFmpegError, FFmpegEOF, FFmpegAGAIN>;
 
@@ -41,9 +50,7 @@ auto check_ffmpeg_result(int errCode, T value) -> ffmpeg_result<T> {
     return std::unexpected(FFmpegError(errCode, errbuf.data()));
 }
 
-
-template <typename T>
-auto get_result_value(ffmpeg_result<T> result) -> T {
+template <typename T> auto get_result_value(ffmpeg_result<T> result) -> T {
     if (!result.has_value()) {
         throw result.error();
     }

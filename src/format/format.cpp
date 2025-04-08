@@ -52,7 +52,7 @@ auto Demuxer::readPacket() -> ffmpeg::util::ffmpeg_result<util::Packet> {
 
     if (ret < 0) {
         if (ret == AVERROR_EOF) {
-            return std::unexpected(ffmpeg::util::FFmpegEOF{});
+            return std::unexpected(ffmpeg::util::ERREof);
         }
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
     }

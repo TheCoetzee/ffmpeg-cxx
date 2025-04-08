@@ -45,18 +45,18 @@ Decoder::Decoder(ffmpeg::format::Stream const& stream) {
 
 auto Decoder::decodeNextFrame() -> ffmpeg::util::ffmpeg_result<util::Frame> {
     if (eof_reached_) {
-        return std::unexpected(ffmpeg::util::FFmpegEOF{});
+        return std::unexpected(ffmpeg::util::ERREof);
     }
 
     util::Frame frame;
 
     int ret = avcodec_receive_frame(ctx_.get(), frame.get());
     if (ret == AVERROR(EAGAIN)) {
-        return std::unexpected(ffmpeg::util::FFmpegAGAIN{});
+        return std::unexpected(ffmpeg::util::ErrAgain);
     }
     if (ret == AVERROR_EOF) {
         eof_reached_ = true;
-        return std::unexpected(ffmpeg::util::FFmpegEOF{});
+        return std::unexpected(ffmpeg::util::ERREof);
     }
     if (ret < 0) {
         return std::unexpected(ffmpeg::util::get_ffmpeg_error(ret));
